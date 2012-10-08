@@ -14,6 +14,21 @@ class ApplicationController < ActionController::Base
 
   rescue_from( ErrorResponse ) { |e| render_error_response(e) }
 
+  before_filter :log_memory
+
+  def log_memory
+    my_logger = Logger.new("#{Rails.root}/log/memory.log")
+    my_logger.warn 'RAM USAGE: ' + "#{self} - #{params[:action]} - " + `vmmap #{Process.pid} | tail -n 2`[10,40].strip
+    hash = {}
+    ObjectSpace.each_object(CouchRest::Model::Base).each do |obj|
+      ObjectSpace.undefine_finalizer(obj)
+      hash[obj.class.name] = (hash[obj.class.name] || 0) + 1
+    end
+    my_logger.warn "Obj counts #{ObjectSpace.each_object(CouchRest::Model::Base).count}"
+    my_logger.warn "Obj counts #{hash}"
+    my_logger.warn "Obj counts #{ObjectSpace.each_object(ApplicationController).count}"
+  end
+
   def render_error_response(ex)
     @exception = ex
 
