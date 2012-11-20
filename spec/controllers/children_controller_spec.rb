@@ -434,6 +434,7 @@ describe ChildrenController do
 			get(:search, :format => 'csv', :query => 'blah')
     end
   end
+
   describe "searching as field worker" do
     before :each do
       @session = fake_field_worker_login
@@ -487,9 +488,10 @@ describe ChildrenController do
       Clock.stub!(:now).and_return(Time.utc(2000, 1, 1, 20, 15))
     end
 
-    it "should return the photo wall pdf for selected child" do
+    it "should return the photo wall pdf for selected child" do``
       Child.should_receive(:get).with('1').and_return(
         stub_child = stub('child', :unique_identifier => '1', :class => Child))
+
 
       ExportGenerator.should_receive(:new).and_return(export_generator = mock('export_generator'))
       export_generator.should_receive(:to_photowall_pdf).and_return(:fake_pdf_data)
@@ -547,4 +549,33 @@ describe ChildrenController do
     end
   end
 
+  describe "show action" do
+      before do
+        user = User.new(:user_name => "some-name")
+        user.stub!(:roles).and_return([Role.new(:permissions => [Permission::CHILDREN[:view_and_search]])])
+        fake_login user
+
+        Child.should_receive(:get).with('1').and_return(
+        stub_child = stub('child', :unique_identifier => '1', :class => Child))
+      end
+      
+      it "should not display export buttons when user is not permitted" do
+        get :show, :id => '1'
+        response.should_not have_selector("a", :class => "export_record_link")
+      end
+
+      it "should not return the photo wall pdf for selected child" do``
+
+        ExportGenerator.should_receive(:new).and_return(export_generator = mock('export_generator'))
+        export_generator.should_receive(:to_photowall_pdf).and_return(:fake_pdf_data)
+
+      @controller.
+        should_receive(:send_data).
+        with(:fake_pdf_data, :filename => '1-20000101-0915.pdf', :type => 'application/pdf').
+        and_return{controller.render :nothing => true}
+
+      get :export_photo_to_pdf, :id => '1'
+      end
+  end
 end
+
